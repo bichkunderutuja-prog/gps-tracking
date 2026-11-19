@@ -1,0 +1,88 @@
+<!DOCTYPE html> <!-- This page is used by driver and sharing the current location.--><html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SEGREMED Driver GPS</title>
+</head>
+<body>
+  <h1>SEGREMED - Driver GPS Tracking</h1>
+
+  <label for="vehicleId">Vehicle ID:</label>
+  <input id="vehicleId" value="MH12AB1234">
+
+  <button id="startBtn">Start GPS Tracking</button><!--This two button used to start and stop and.-->
+  <button id="stopBtn">Stop GPS Tracking</button><!--This two buttons allow the driver to controlling the location.-->
+
+  <p id="status">GPS tracking is stopped.</p>
+  <p id="coordinates">No location received yet.</p>
+<!-- js is linked here -->
+  <script src="http://localhost:3001/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io("http://localhost:3001");
+    let watchId = null;
+
+    const status = document.getElementById("status");
+    const coordinates = document.getElementById("coordinates");
+
+    document.getElementById("startBtn").onclick = () => { //Starting Tracking Code.
+      if (!navigator.geolocation) {
+        status.textContent = "GPS is not supported by this browser.";//location not available.
+        return;
+      }
+
+      if (watchId !== null) return;
+
+      const vehicleId =
+        document.getElementById("vehicleId").value.trim();//bridge b/n js and web page. 
+      
+      if (!vehicleId) {
+        status.textContent = "Enter a vehicle ID first.";//if user forget to fill anything. 
+        return;
+      }
+
+      status.textContent = "Requesting location permission...";
+
+      watchId = navigator.geolocation.watchPosition(//if changes in location,receive updated location.
+        (position) => {
+          const data = {
+            vehicleId,
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            accuracy: position.coords.accuracy
+          };
+
+          socket.emit("gps:update", data, (result) => {//Send message client to server
+            if (result && result.ok) {
+              status.textContent = "GPS location shared successfully.";
+              coordinates.textContent =
+                "Latitude: " + data.latitude +
+                " | Longitude: " + data.longitude +
+                " | Accuracy: " + Math.round(data.accuracy) + " metres";
+            } else {
+              status.textContent = "Could not share GPS location.";
+            }
+          });
+        },
+        (error) => {
+          status.textContent = "GPS error: " + error.message;
+          navigator.geolocation.clearWatch(watchId);//stop continuous location.
+          watchId = null;
+        },
+        {
+          enableHighAccuracy: true,
+          maximumAge: 3000,
+          timeout: 15000
+        }
+      );
+    };
+//on demand on user stop the location.
+    document.getElementById("stopBtn").onclick = () => {
+      if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+      }
+      status.textContent = "GPS tracking stopped.";
+    };
+  </script>
+</body>
+</html>

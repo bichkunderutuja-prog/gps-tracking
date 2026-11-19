@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SEGREMED Vehicle Location</title>
+</head>
+<body>
+  <h2>SEGREMED - Vehicle Location</h2>
+
+  <label for="vehicleId">Vehicle ID:</label>
+  <input id="vehicleId" value="Vehicle-01">
+  <button id="findBtn">Find Vehicle</button>
+
+  <p id="status">Click Find Vehicle to load its latest location.</p>
+  <p id="coords"></p>
+  <a id="mapLink" target="_blank" rel="noopener" hidden>
+    Open vehicle location in Google Maps
+  </a>
+
+  <script>
+    document.getElementById("findBtn").onclick = async () => {
+      const id = document.getElementById("vehicleId").value.trim();
+      const status = document.getElementById("status");
+      const coords = document.getElementById("coords");
+      const mapLink = document.getElementById("mapLink");
+
+      status.textContent = "Loading vehicle location...";
+      coords.textContent = "";
+      mapLink.hidden = true;//hides the g map link until new vehical location is available. 
+
+      try {
+        const response = await fetch("http://localhost:3001/api/vehicles");//request to the node.js to fetch the vehicle gps and & wait for responce.
+
+        if (!response.ok) throw new Error("Server returned an error");
+
+        const vehicles = await response.json();
+        const vehicle = vehicles.find(v => v.vehicleId === id);//serching
+
+        if (!vehicle) {
+          status.textContent = "Vehicle not found. Start GPS tracking first.";
+          return;
+        }
+
+        status.textContent = "Latest location received.";
+        coords.textContent =
+          `Latitude: ${vehicle.latitude}, Longitude: ${vehicle.longitude}`;
+
+        mapLink.href =//link with google map for vehical's location display to the user they also can watch.
+          `https://www.google.com/maps?q=${vehicle.latitude},${vehicle.longitude}`;
+        mapLink.hidden = false;//map visible on webpage.
+      } catch (error) {
+        status.textContent =
+          "Cannot connect to GPS server. Check that server.js is running.";
+      }
+    };
+  </script>
+</body>
+</html>
